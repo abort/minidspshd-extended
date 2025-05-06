@@ -51,9 +51,9 @@ class VolumioConfigFlow(ConfigFlow, domain=DOMAIN):
     _uuid: str | None
     _power_consumption_entity: RegistryEntry | None
     _power_button: RegistryEntry | None
-    _has_power_button: bool
-    def __init__(self):
-        self._has_power_button = self._power_consumption_entity is not None and self._power_button is not None
+
+    def _has_power_button(self) -> bool:
+        return self._power_consumption_entity is not None and self._power_button is not None
 
     @callback
     def _async_get_entry(self) -> ConfigFlowResult:
@@ -66,7 +66,7 @@ class VolumioConfigFlow(ConfigFlow, domain=DOMAIN):
                 CONF_ID: self._uuid,
                 DATA_POWER_CONSUMPTION: self._power_consumption_entity,
                 DATA_POWER_BUTTON: self._power_button,
-                DATA_HAS_POWER_BUTTON: self._has_power_button
+                DATA_HAS_POWER_BUTTON: self._has_power_button()
             },
         )
 
