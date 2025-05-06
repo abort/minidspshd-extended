@@ -31,8 +31,9 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import Throttle
 
+from . import DATA_POWER_BUTTON, DATA_POWER_CONSUMPTION
 from .browse_media import browse_node, browse_top_level
-from .const import DATA_INFO, DATA_VOLUMIO, DOMAIN, MINIDSP_VARIANT
+from .const import DATA_INFO, DATA_VOLUMIO, DOMAIN, MINIDSP_VARIANT, DATA_HAS_POWER_BUTTON
 
 # three possible sets of features: MiniDSP as a DAC, MiniDSP as a Volumio server, normal Volumio
 
@@ -107,8 +108,11 @@ async def async_setup_entry(
     info = data[DATA_INFO]
     uid = config_entry.data[CONF_ID]
     name = config_entry.data[CONF_NAME]
+    has_power_button = data[DATA_HAS_POWER_BUTTON]
+    power_button = data[DATA_POWER_BUTTON]
+    power_consumption = data[DATA_POWER_CONSUMPTION]
 
-    entity = Volumio(volumio, uid, name, info)
+    entity = Volumio(volumio, uid, name, info, has_power_button, power_button, power_consumption)
     async_add_entities([entity])
 
 
@@ -123,7 +127,7 @@ class Volumio(MediaPlayerEntity):
     _attr_sound_mode_list = []
     _attr_volume_step = 0.02
 
-    def __init__(self, volumio, uid, name, info) -> None:
+    def __init__(self, volumio, uid, name, info, has_power_button, power_button, power_consumption) -> None:
         """Initialize the media player."""
         self._volumio = volumio
         unique_id = uid
@@ -142,6 +146,9 @@ class Volumio(MediaPlayerEntity):
             name=name,
             sw_version=info["systemversion"],
         )
+        self._has_power_button = has_power_button
+        self._power_button = power_button
+        self._power_consumption = power_consumption
 
     async def _async_build_minidsp_lists(self):
         """For MiniDSP SHD, build list of actual hardware inputs and presets."""
@@ -176,6 +183,10 @@ class Volumio(MediaPlayerEntity):
             else:
                 async with asyncio.timeout(VOLUMIO_REQUEST_TIMEOUT):
                     await self._async_update_playlists()
+
+            if self._has_power_button:
+                self._attr_supported_features = self._attr_supported_features | MediaPlayerEntityFeature.TURN_ON | MediaPlayerEntityFeature.TURN_OFF
+
             self._retry_count = 0
             self._is_available = True
 
@@ -201,6 +212,8 @@ class Volumio(MediaPlayerEntity):
             return MediaPlayerState.PAUSED
         if status == "play":
             return MediaPlayerState.PLAYING
+        if self._has_power_button and self._is_power_standby():
+                return MediaPlayerState.OFF
 
         return MediaPlayerState.IDLE
 
@@ -287,6 +300,24 @@ class Volumio(MediaPlayerEntity):
         else:
             await self._volumio.pause()
 
+    async def async_turn_off(self) -> None:
+        if self._has_power_button and self._state != MediaPlayerState.OFF:
+            await self.hass.services.async_call(
+                domain="button",
+                service="press",
+                service_data={"entity_id": self._power_button},
+                blocking=True,
+            )
+
+    async def async_turn_on(self) -> None:
+        if self._has_power_button and self._state == MediaPlayerState.OFF:
+            await self.hass.services.async_call(
+                domain="button",
+                service="press",
+                service_data={"entity_id": self._power_button},
+                blocking=True,
+            )
+
     async def async_media_stop(self) -> None:
         """Send media_stop command to media player."""
         await self._volumio.stop()
@@ -368,3 +399,18 @@ class Volumio(MediaPlayerEntity):
         cached_url = self.thumbnail_cache.get(media_content_id)
         image_url = self._volumio.canonic_url(cached_url)
         return await self._async_fetch_image(image_url)
+
+    def _is_power_standby(self):
+        if self._has_power_button:
+            return False
+
+        power_value = float(self._power_button.entity_1_state.state)
+        unit_of_measurement = self._power_button.entity_1_state.attributes.get("unit_of_measurement", "").lower()
+        current_power_watts = None
+        if unit_of_measurement == "w":
+            current_power_watts = power_value
+        elif unit_of_measurement == "kw":
+            current_power_watts = power_value * 1000
+        elif unit_of_measurement == "mw":
+            current_power_watts = power_value * 1_000_000
+        return current_power_watts is not None and current_power_watts < 5
