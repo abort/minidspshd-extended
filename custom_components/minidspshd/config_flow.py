@@ -90,7 +90,7 @@ class VolumioConfigFlow(ConfigFlow, domain=DOMAIN):
             self._host = user_input[CONF_HOST]
             self._port = user_input[CONF_PORT]
 
-            entity_registry = await self.hass.helpers.entity_registry.async_get()
+            entity_registry = self.hass.helpers.entity_registry
             power_consumption_entity = await entity_registry.async_get(user_input["power_consumption_entity"])
             if power_consumption_entity is None:
                 errors["power_consumption_entity"] = "entity_not_found"
