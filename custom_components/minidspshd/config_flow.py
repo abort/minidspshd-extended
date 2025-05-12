@@ -83,6 +83,7 @@ class VolumioConfigFlow(ConfigFlow, domain=DOMAIN):
             info = None
             self._host = user_input[CONF_HOST]
             self._port = user_input[CONF_PORT]
+            _LOGGER.info(f"user input: {user_input}")
 
             power_switch = await entity_registry.async_get(user_input[CONF_ENTITY_ID])
             if power_switch is not None and power_switch.capabilities.get("device_class") != "switch":
