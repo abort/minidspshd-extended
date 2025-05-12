@@ -13,7 +13,6 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_registry import async_get
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.entity_registry import RegistryEntry
 from homeassistant.helpers.selector import EntitySelector, EntitySelectorConfig
 from pyvolumio import CannotConnectError, Volumio
 
@@ -84,7 +83,7 @@ class VolumioConfigFlow(ConfigFlow, domain=DOMAIN):
             self._port = user_input[CONF_PORT]
             _LOGGER.warning(f"user input: {user_input}")
 
-            entity_registry = async_get(self.hass)
+            entity_registry = await async_get(self.hass)
 
             if user_input.get(CONF_ENTITY_ID, None) is not None:
                 sw = await entity_registry.async_get(user_input[CONF_ENTITY_ID])
