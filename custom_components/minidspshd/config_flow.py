@@ -83,10 +83,10 @@ class VolumioConfigFlow(ConfigFlow, domain=DOMAIN):
             self._port = user_input[CONF_PORT]
             _LOGGER.warning(f"user input: {user_input}")
 
-            entity_registry = await async_get(self.hass)
+            entity_registry = async_get(self.hass)
 
             if user_input.get(CONF_ENTITY_ID, None) is not None:
-                sw = await entity_registry.async_get(user_input[CONF_ENTITY_ID])
+                sw = entity_registry.async_get(user_input[CONF_ENTITY_ID])
                 if sw.domain != "switch":
                     errors[CONF_ENTITY_ID] = "not_a_switch"
                 else:
