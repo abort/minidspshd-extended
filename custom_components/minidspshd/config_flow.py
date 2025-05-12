@@ -12,20 +12,20 @@ import voluptuous as vol
 
 from homeassistant.components import zeroconf
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
-from homeassistant.const import CONF_HOST, CONF_ID, CONF_NAME, CONF_PORT
+from homeassistant.const import CONF_HOST, CONF_ID, CONF_NAME, CONF_PORT, CONF_ENTITY_ID
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.service import entity_registry
 
-from .const import DOMAIN, DATA_POWER_SWITCH
+from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
 DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_HOST): str, vol.Required(CONF_PORT, default=3000): int,
-        vol.Optional(DATA_POWER_SWITCH, description="Switch that toggles the power of the MiniDSP", default=None): EntitySelector(EntitySelectorConfig(domain="switch")),
+        vol.Optional(CONF_ENTITY_ID, description="Switch that toggles the power of the MiniDSP", default=None): EntitySelector(EntitySelectorConfig(domain="switch")),
     }
 )
 
@@ -59,7 +59,7 @@ class VolumioConfigFlow(ConfigFlow, domain=DOMAIN):
                 CONF_HOST: self._host,
                 CONF_PORT: self._port,
                 CONF_ID: self._uuid,
-                DATA_POWER_SWITCH: self._power,
+                CONF_ENTITY_ID: self._power,
             },
         )
 
@@ -83,9 +83,9 @@ class VolumioConfigFlow(ConfigFlow, domain=DOMAIN):
             self._host = user_input[CONF_HOST]
             self._port = user_input[CONF_PORT]
 
-            power_switch = await entity_registry.async_get(user_input[DATA_POWER_SWITCH])
+            power_switch = await entity_registry.async_get(user_input[CONF_ENTITY_ID])
             if power_switch is not None and power_switch.capabilities.get("device_class") != "switch":
-                errors[DATA_POWER_SWITCH] = "not_a_switch"
+                errors[CONF_ENTITY_ID] = "not_a_switch"
             else:
                 self._power = power_switch
 

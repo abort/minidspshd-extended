@@ -25,14 +25,14 @@ from homeassistant.components.media_player import (
     RepeatMode,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_ID, CONF_NAME
+from homeassistant.const import CONF_ID, CONF_NAME, CONF_ENTITY_ID
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import Throttle
 
 from .browse_media import browse_node, browse_top_level
-from .const import DATA_INFO, DATA_VOLUMIO, DOMAIN, MINIDSP_VARIANT, DATA_POWER_SWITCH
+from .const import DATA_INFO, DATA_VOLUMIO, DOMAIN, MINIDSP_VARIANT
 
 # three possible sets of features: MiniDSP as a DAC, MiniDSP as a Volumio server, normal Volumio
 
@@ -107,7 +107,7 @@ async def async_setup_entry(
     info = data[DATA_INFO]
     uid = config_entry.data[CONF_ID]
     name = config_entry.data[CONF_NAME]
-    power_switch = data[DATA_POWER_SWITCH]
+    power_switch = config_entry.data[CONF_ENTITY_ID]
 
     entity = Volumio(volumio, uid, name, info, power_switch)
     async_add_entities([entity])

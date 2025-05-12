@@ -6,5 +6,3 @@ DATA_INFO = "info"
 DATA_VOLUMIO = "minidspshd"
 
 MINIDSP_VARIANT = "minidsp"
-
-DATA_POWER_SWITCH = "power_switch_entity"

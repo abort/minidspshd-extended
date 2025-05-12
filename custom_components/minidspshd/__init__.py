@@ -8,7 +8,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .const import DATA_INFO, DATA_VOLUMIO, DOMAIN, DATA_POWER_SWITCH
+from .const import DATA_INFO, DATA_VOLUMIO, DOMAIN
 
 PLATFORMS = [Platform.MEDIA_PLAYER]
 
@@ -27,7 +27,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
         DATA_VOLUMIO: volumio,
         DATA_INFO: info,
-        DATA_POWER_SWITCH: entry.data[DATA_POWER_SWITCH]
     }
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
