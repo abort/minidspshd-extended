@@ -132,7 +132,7 @@ class Volumio(MediaPlayerEntity):
         self._systeminfo = None
         self._minidsp = False
         self._source_map = {}
-        self._is_available = False
+        self._is_available = power_switch is not None
         self._retry_count = 0
         self.thumbnail_cache = {}
         self._attr_unique_id = unique_id
@@ -189,7 +189,7 @@ class Volumio(MediaPlayerEntity):
             # mark as unavailable after several consecutive failures
             self._retry_count += 1
             if self._retry_count > RETRY_LIMIT:
-                self._is_available = False
+                self._is_available = self._power_switch is not None
                 self._retry_count = 0
 
     @property
