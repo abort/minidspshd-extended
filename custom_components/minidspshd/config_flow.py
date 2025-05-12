@@ -25,7 +25,7 @@ _LOGGER = logging.getLogger(__name__)
 DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_HOST): str, vol.Required(CONF_PORT, default=3000): int,
-        vol.Optional("power", "Switch that toggles the power of the MiniDSP"): EntitySelector(EntitySelectorConfig(domain="switch")),
+        vol.Optional(DATA_POWER_SWITCH, description="Switch that toggles the power of the MiniDSP", default=None): EntitySelector(EntitySelectorConfig(domain="switch")),
     }
 )
 
