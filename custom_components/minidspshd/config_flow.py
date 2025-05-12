@@ -82,8 +82,8 @@ class VolumioConfigFlow(ConfigFlow, domain=DOMAIN):
             self._host = user_input[CONF_HOST]
             self._port = user_input[CONF_PORT]
             _LOGGER.warning(f"user input: {user_input}")
-            power_switch = user_input[CONF_ENTITY_ID]
-            if power_switch is not None and power_switch.capabilities.get("device_class") != "switch":
+            power_switch = user_input.get(CONF_ENTITY_ID, None)
+            if power_switch is not None and self.hass.states.get(power_switch).capabilities.get("device_class") != "switch":
                 errors[CONF_ENTITY_ID] = "not_a_switch"
             else:
                 self._power = power_switch

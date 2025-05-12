@@ -25,7 +25,7 @@ from homeassistant.components.media_player import (
     RepeatMode,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_ID, CONF_NAME, CONF_ENTITY_ID
+from homeassistant.const import CONF_ID, CONF_NAME, CONF_ENTITY_ID, STATE_ON
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -208,7 +208,7 @@ class Volumio(MediaPlayerEntity):
         if status == "play":
             return MediaPlayerState.PLAYING
         if self._power_switch is not None:
-            return MediaPlayerState.ON if self._power_switch.state == "on" else MediaPlayerState.OFF
+            return MediaPlayerState.ON if self.hass.states.get(self._power_switch).state == STATE_ON else MediaPlayerState.OFF
 
         return MediaPlayerState.IDLE
 
