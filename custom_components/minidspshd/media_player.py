@@ -207,10 +207,19 @@ class Volumio(MediaPlayerEntity):
             return MediaPlayerState.PAUSED
         if status == "play":
             return MediaPlayerState.PLAYING
+        if status == "on":
+            return MediaPlayerState.ON
+        if status == "off":
+            return MediaPlayerState.OFF
+        # fallback
         if self._power_switch is not None:
             return MediaPlayerState.ON if self.hass.states.get(self._power_switch).state == STATE_ON else MediaPlayerState.OFF
 
         return MediaPlayerState.IDLE
+
+    def update_power_switch_state(self):
+        if self._power_switch is not None:
+            self._state = "on" if self.hass.states.get(self._power_switch).state == STATE_ON else "off"
 
     @property
     def media_title(self):
@@ -303,6 +312,7 @@ class Volumio(MediaPlayerEntity):
                 service_data={"entity_id": self._power_switch},
                 blocking=True,
             )
+            self.update_power_switch_state()
 
     async def async_turn_on(self) -> None:
         if self._power_switch is not None and self._state == MediaPlayerState.OFF:
@@ -312,6 +322,7 @@ class Volumio(MediaPlayerEntity):
                 service_data={"entity_id": self._power_switch},
                 blocking=True,
             )
+            self.update_power_switch_state()
 
     async def async_media_stop(self) -> None:
         """Send media_stop command to media player."""
