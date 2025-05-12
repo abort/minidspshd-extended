@@ -91,6 +91,7 @@ class VolumioConfigFlow(ConfigFlow, domain=DOMAIN):
                     errors[CONF_ENTITY_ID] = "not_a_switch"
                 else:
                     self._power = None
+                _LOGGER.warning(f"domain: {sw.domain}")
 
             try:
                 info = await validate_input(self.hass, self._host, self._port)
