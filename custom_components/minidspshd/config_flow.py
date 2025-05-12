@@ -49,7 +49,7 @@ class VolumioConfigFlow(ConfigFlow, domain=DOMAIN):
     _port: int
     _name: str
     _uuid: str | None
-    _power: RegistryEntry | None
+    _power: str | None
 
     @callback
     def _async_get_entry(self) -> ConfigFlowResult:
@@ -83,13 +83,12 @@ class VolumioConfigFlow(ConfigFlow, domain=DOMAIN):
             info = None
             self._host = user_input[CONF_HOST]
             self._port = user_input[CONF_PORT]
-            _LOGGER.info(f"user input: {user_input}")
-
-            power_switch = await entity_registry.async_get(user_input[CONF_ENTITY_ID])
+            _LOGGER.warning(f"user input: {user_input}")
+            power_switch = user_input[CONF_ENTITY_ID]
             if power_switch is not None and power_switch.capabilities.get("device_class") != "switch":
                 errors[CONF_ENTITY_ID] = "not_a_switch"
             else:
-                self._power = power_switch
+                self._power = power_switch.entity_id
 
             try:
                 info = await validate_input(self.hass, self._host, self._port)
