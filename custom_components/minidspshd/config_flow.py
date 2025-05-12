@@ -6,7 +6,7 @@ import logging
 from typing import Any
 
 from homeassistant.helpers.entity_registry import RegistryEntry
-from homeassistant.helpers.selector import EntitySelector
+from homeassistant.helpers.selector import EntitySelector, EntitySelectorConfig
 from pyvolumio import CannotConnectError, Volumio
 import voluptuous as vol
 
@@ -17,16 +17,14 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from . import DATA_POWER_CONSUMPTION, DATA_POWER_BUTTON, DATA_HAS_POWER_BUTTON
-from .const import DOMAIN
+from .const import DOMAIN, DATA_POWER_SWITCH
 
 _LOGGER = logging.getLogger(__name__)
 
 DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_HOST): str, vol.Required(CONF_PORT, default=3000): int,
-        vol.Optional("power_consumption_entity"): EntitySelector(),
-        vol.Optional("power_button"): EntitySelector()
+        vol.Optional("power", "Switch that toggles the power of the MiniDSP"): EntitySelector(EntitySelectorConfig(domain="switch")),
     }
 )
 
@@ -49,11 +47,7 @@ class VolumioConfigFlow(ConfigFlow, domain=DOMAIN):
     _port: int
     _name: str
     _uuid: str | None
-    _power_consumption_entity: RegistryEntry | None
-    _power_button: RegistryEntry | None
-
-    def _has_power_button(self) -> bool:
-        return self._power_consumption_entity is not None and self._power_button is not None
+    _power: RegistryEntry | None
 
     @callback
     def _async_get_entry(self) -> ConfigFlowResult:
@@ -64,9 +58,7 @@ class VolumioConfigFlow(ConfigFlow, domain=DOMAIN):
                 CONF_HOST: self._host,
                 CONF_PORT: self._port,
                 CONF_ID: self._uuid,
-                DATA_POWER_CONSUMPTION: self._power_consumption_entity,
-                DATA_POWER_BUTTON: self._power_button,
-                DATA_HAS_POWER_BUTTON: self._has_power_button()
+                DATA_POWER_SWITCH: self._power,
             },
         )
 
@@ -91,21 +83,11 @@ class VolumioConfigFlow(ConfigFlow, domain=DOMAIN):
             self._port = user_input[CONF_PORT]
 
             entity_registry = self.hass.helpers.entity_registry
-            power_consumption_entity = await entity_registry.async_get(user_input["power_consumption_entity"])
-            if power_consumption_entity is None:
-                errors["power_consumption_entity"] = "entity_not_found"
-            elif power_consumption_entity.capabilities.get("device_class") != "energy":
-                errors["power_consumption_entity"] = "not_an_energy_sensor"
+            power_switch = await entity_registry.async_get(user_input[DATA_POWER_SWITCH])
+            if power_switch is not None and power_switch.capabilities.get("device_class") != "switch":
+                errors[DATA_POWER_SWITCH] = "not_a_switch"
             else:
-                self._power_consumption_entity = power_consumption_entity
-
-            power_button = await entity_registry.async_get(user_input["power_button"])
-            if power_button is None:
-                errors["power_button"] = "entity_not_found"
-            elif power_button.domain != "button":
-                errors["power_button"] = "not_a_button"
-            else:
-                self._power_button = power_button
+                self._power = power_switch
 
             try:
                 info = await validate_input(self.hass, self._host, self._port)
