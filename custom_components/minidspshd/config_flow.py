@@ -5,18 +5,16 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from homeassistant.helpers.entity_registry import RegistryEntry
-from homeassistant.helpers.selector import EntitySelector, EntitySelectorConfig
-from pyvolumio import CannotConnectError, Volumio
 import voluptuous as vol
-
 from homeassistant.components import zeroconf
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.const import CONF_HOST, CONF_ID, CONF_NAME, CONF_PORT, CONF_ENTITY_ID
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.service import entity_registry
+from homeassistant.helpers.entity_registry import RegistryEntry
+from homeassistant.helpers.selector import EntitySelector, EntitySelectorConfig
+from pyvolumio import CannotConnectError, Volumio
 
 from .const import DOMAIN
 
@@ -49,7 +47,7 @@ class VolumioConfigFlow(ConfigFlow, domain=DOMAIN):
     _port: int
     _name: str
     _uuid: str | None
-    _power: str | None
+    _power: RegistryEntry | None
 
     @callback
     def _async_get_entry(self) -> ConfigFlowResult:
@@ -88,7 +86,7 @@ class VolumioConfigFlow(ConfigFlow, domain=DOMAIN):
             if power_switch is not None and power_switch.capabilities.get("device_class") != "switch":
                 errors[CONF_ENTITY_ID] = "not_a_switch"
             else:
-                self._power = power_switch.entity_id
+                self._power = power_switch
 
             try:
                 info = await validate_input(self.hass, self._host, self._port)
