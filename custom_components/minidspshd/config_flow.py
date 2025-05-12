@@ -16,6 +16,7 @@ from homeassistant.const import CONF_HOST, CONF_ID, CONF_NAME, CONF_PORT
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.service import entity_registry
 
 from .const import DOMAIN, DATA_POWER_SWITCH
 
@@ -82,7 +83,6 @@ class VolumioConfigFlow(ConfigFlow, domain=DOMAIN):
             self._host = user_input[CONF_HOST]
             self._port = user_input[CONF_PORT]
 
-            entity_registry = self.hass.helpers.entity_registry
             power_switch = await entity_registry.async_get(user_input[DATA_POWER_SWITCH])
             if power_switch is not None and power_switch.capabilities.get("device_class") != "switch":
                 errors[DATA_POWER_SWITCH] = "not_a_switch"
@@ -118,6 +118,7 @@ class VolumioConfigFlow(ConfigFlow, domain=DOMAIN):
         self._port = discovery_info.port or 3000
         self._name = discovery_info.properties["volumioName"]
         self._uuid = discovery_info.properties["UUID"]
+        self._power = None
 
         await self._set_uid_and_abort()
 

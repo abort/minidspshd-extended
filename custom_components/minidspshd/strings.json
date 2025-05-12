@@ -19,9 +19,7 @@
     "error": {
       "cannot_connect": "cannot connect",
       "unknown": "unknown error",
-      "entity_not_found": "The selected entity could not be found.",
-      "not_an_energy_sensor": "The selected sensor is not an energy sensor.",
-      "not_a_button": "The selected entity is not a button."
+      "not_a_switch": "The selected entity is not a switch."
     },
     "abort": {
       "already_configured": "device already configured",
