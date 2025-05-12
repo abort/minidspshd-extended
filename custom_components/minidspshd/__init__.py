@@ -3,7 +3,7 @@
 from pyvolumio import CannotConnectError, Volumio
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_PORT, Platform
+from homeassistant.const import CONF_HOST, CONF_PORT, Platform, CONF_ENTITY_ID
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -24,7 +24,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     except CannotConnectError as error:
         raise ConfigEntryNotReady from error
 
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
+    hass.data.setdefault(DOMAIN, {CONF_ENTITY_ID: None})[entry.entry_id] = {
         DATA_VOLUMIO: volumio,
         DATA_INFO: info,
     }
