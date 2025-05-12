@@ -209,17 +209,17 @@ class Volumio(MediaPlayerEntity):
             return MediaPlayerState.PLAYING
         if status == "on":
             return MediaPlayerState.ON
-        if status == "off":
-            return MediaPlayerState.OFF
+        if status == "standby":
+            return MediaPlayerState.STANDBY
         # fallback
         if self._power_switch is not None:
-            return MediaPlayerState.ON if self.hass.states.get(self._power_switch).state == STATE_ON else MediaPlayerState.OFF
+            return MediaPlayerState.ON if self.hass.states.get(self._power_switch).state == STATE_ON else MediaPlayerState.STANDBY
 
         return MediaPlayerState.IDLE
 
     def update_power_switch_state(self):
         if self._power_switch is not None:
-            self._state = "on" if self.hass.states.get(self._power_switch).state == STATE_ON else "off"
+            self._state = "on" if self.hass.states.get(self._power_switch).state == STATE_ON else "standby"
 
     @property
     def media_title(self):
