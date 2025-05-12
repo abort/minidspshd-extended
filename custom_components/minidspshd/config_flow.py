@@ -86,11 +86,12 @@ class VolumioConfigFlow(ConfigFlow, domain=DOMAIN):
 
             entity_registry = async_get(self.hass)
 
-            power_switch = user_input.get(CONF_ENTITY_ID, None)
-            if power_switch is not None and entity_registry.async_get(power_switch).capabilities.get("device_class") != "switch":
-                errors[CONF_ENTITY_ID] = "not_a_switch"
-            else:
-                self._power = power_switch
+            self._power = user_input.get(CONF_ENTITY_ID, None)
+            if self._power is not None:
+                sw = await entity_registry.async_get(self._power)
+                if sw.domain == "switch":
+                    errors[CONF_ENTITY_ID] = "not_a_switch"
+                    self._power = None
 
             try:
                 info = await validate_input(self.hass, self._host, self._port)
