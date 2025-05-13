@@ -26,11 +26,11 @@ from homeassistant.components.media_player import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_ID, CONF_NAME, CONF_ENTITY_ID, STATE_ON, STATE_OFF
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback, Event, EventStateChangedData
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import Throttle
-from homeassistant.helpers.event import async_track_state_change
+from homeassistant.helpers.event import async_track_state_change_event
 
 from .browse_media import browse_node, browse_top_level
 from .const import DATA_INFO, DATA_VOLUMIO, DOMAIN, MINIDSP_VARIANT
@@ -124,13 +124,14 @@ class Volumio(MediaPlayerEntity):
     _attr_sound_mode_list = []
     _attr_volume_step = 0.02
 
-    async def on_power_state_change(self, entity_id, old_state, new_state):
-        if new_state == STATE_ON:
+    @callback
+    def _on_power_state_change(self, event: Event[EventStateChangedData]) -> None:
+        if event.data["new_state"] == STATE_ON:
             self._state["status"] = "on"
-        elif new_state == STATE_OFF:
+        elif event.data["new_state"] == STATE_OFF:
             self._state["status"] = "standby"
 
-        self.async_write_ha_state()
+        self.async_schedule_update_ha_state(True)
 
     def __init__(self, volumio, uid, name, info, power_switch) -> None:
         """Initialize the media player."""
@@ -153,7 +154,7 @@ class Volumio(MediaPlayerEntity):
         )
         self._power_switch = power_switch
         if self._power_switch is not None:
-            async_track_state_change(self.hass, self._power_switch, self.on_power_state_change)
+            async_track_state_change_event(self.hass, self._power_switch, self._on_power_state_change)
 
     async def _async_build_minidsp_lists(self):
         """For MiniDSP SHD, build list of actual hardware inputs and presets."""
