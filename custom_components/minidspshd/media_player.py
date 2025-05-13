@@ -135,6 +135,7 @@ class Volumio(MediaPlayerEntity):
 
     def __init__(self, volumio, uid, name, info, power_switch) -> None:
         """Initialize the media player."""
+        super().__init__()
         self._volumio = volumio
         unique_id = uid
         self._state = {}
