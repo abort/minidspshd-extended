@@ -29,6 +29,7 @@ from homeassistant.const import CONF_ID, CONF_NAME, CONF_ENTITY_ID, STATE_ON, ST
 from homeassistant.core import HomeAssistant, callback, Event, EventStateChangedData
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.util import Throttle
 from homeassistant.helpers.event import async_track_state_change_event
 
@@ -113,7 +114,7 @@ async def async_setup_entry(
     async_add_entities([entity])
 
 
-class Volumio(MediaPlayerEntity):
+class Volumio(MediaPlayerEntity, RestoreEntity):
     """Volumio Player Object."""
 
     _attr_has_entity_name = True
@@ -163,6 +164,14 @@ class Volumio(MediaPlayerEntity):
     async def async_will_remove_from_hass(self) -> None:
         if self._power_updates_unsub is not None:
             self._power_updates_unsub()
+
+    async def async_added_to_hass(self) -> None:
+        """Handle entity addition to Home Assistant."""
+        await super().async_added_to_hass()
+
+        power_state = self.hass.states.get(self._power_switch).state
+        self._update_power_state(power_state)
+        self._is_available = True
 
     async def _async_build_minidsp_lists(self):
         """For MiniDSP SHD, build list of actual hardware inputs and presets."""
