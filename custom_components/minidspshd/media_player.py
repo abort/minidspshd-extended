@@ -25,11 +25,12 @@ from homeassistant.components.media_player import (
     RepeatMode,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_ID, CONF_NAME, CONF_ENTITY_ID, STATE_ON
+from homeassistant.const import CONF_ID, CONF_NAME, CONF_ENTITY_ID, STATE_ON, STATE_OFF
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import Throttle
+from homeassistant.helpers.event import async_track_state_change
 
 from .browse_media import browse_node, browse_top_level
 from .const import DATA_INFO, DATA_VOLUMIO, DOMAIN, MINIDSP_VARIANT
@@ -37,48 +38,48 @@ from .const import DATA_INFO, DATA_VOLUMIO, DOMAIN, MINIDSP_VARIANT
 # three possible sets of features: MiniDSP as a DAC, MiniDSP as a Volumio server, normal Volumio
 
 FEATURES_AS_DAC = (
-    MediaPlayerEntityFeature.VOLUME_SET
-    | MediaPlayerEntityFeature.VOLUME_MUTE
-    | MediaPlayerEntityFeature.SELECT_SOURCE
-    | MediaPlayerEntityFeature.SELECT_SOUND_MODE
-    | MediaPlayerEntityFeature.PLAY_MEDIA
-    | MediaPlayerEntityFeature.BROWSE_MEDIA
+        MediaPlayerEntityFeature.VOLUME_SET
+        | MediaPlayerEntityFeature.VOLUME_MUTE
+        | MediaPlayerEntityFeature.SELECT_SOURCE
+        | MediaPlayerEntityFeature.SELECT_SOUND_MODE
+        | MediaPlayerEntityFeature.PLAY_MEDIA
+        | MediaPlayerEntityFeature.BROWSE_MEDIA
 )
 
 FEATURES_AS_SERVER = (
-    MediaPlayerEntityFeature.PAUSE
-    | MediaPlayerEntityFeature.VOLUME_SET
-    | MediaPlayerEntityFeature.VOLUME_MUTE
-    | MediaPlayerEntityFeature.PREVIOUS_TRACK
-    | MediaPlayerEntityFeature.NEXT_TRACK
-    | MediaPlayerEntityFeature.SEEK
-    | MediaPlayerEntityFeature.STOP
-    | MediaPlayerEntityFeature.PLAY
-    | MediaPlayerEntityFeature.PLAY_MEDIA
-    | MediaPlayerEntityFeature.SELECT_SOURCE
-    | MediaPlayerEntityFeature.REPEAT_SET
-    | MediaPlayerEntityFeature.SHUFFLE_SET
-    | MediaPlayerEntityFeature.CLEAR_PLAYLIST
-    | MediaPlayerEntityFeature.BROWSE_MEDIA
-    | MediaPlayerEntityFeature.SELECT_SOUND_MODE
+        MediaPlayerEntityFeature.PAUSE
+        | MediaPlayerEntityFeature.VOLUME_SET
+        | MediaPlayerEntityFeature.VOLUME_MUTE
+        | MediaPlayerEntityFeature.PREVIOUS_TRACK
+        | MediaPlayerEntityFeature.NEXT_TRACK
+        | MediaPlayerEntityFeature.SEEK
+        | MediaPlayerEntityFeature.STOP
+        | MediaPlayerEntityFeature.PLAY
+        | MediaPlayerEntityFeature.PLAY_MEDIA
+        | MediaPlayerEntityFeature.SELECT_SOURCE
+        | MediaPlayerEntityFeature.REPEAT_SET
+        | MediaPlayerEntityFeature.SHUFFLE_SET
+        | MediaPlayerEntityFeature.CLEAR_PLAYLIST
+        | MediaPlayerEntityFeature.BROWSE_MEDIA
+        | MediaPlayerEntityFeature.SELECT_SOUND_MODE
 )
 
 FEATURES_AS_VOLUMIO = (
-    MediaPlayerEntityFeature.PAUSE
-    | MediaPlayerEntityFeature.VOLUME_SET
-    | MediaPlayerEntityFeature.VOLUME_MUTE
-    | MediaPlayerEntityFeature.PREVIOUS_TRACK
-    | MediaPlayerEntityFeature.NEXT_TRACK
-    | MediaPlayerEntityFeature.SEEK
-    | MediaPlayerEntityFeature.STOP
-    | MediaPlayerEntityFeature.PLAY
-    | MediaPlayerEntityFeature.PLAY_MEDIA
-    | MediaPlayerEntityFeature.VOLUME_STEP
-    | MediaPlayerEntityFeature.SELECT_SOURCE
-    | MediaPlayerEntityFeature.REPEAT_SET
-    | MediaPlayerEntityFeature.SHUFFLE_SET
-    | MediaPlayerEntityFeature.CLEAR_PLAYLIST
-    | MediaPlayerEntityFeature.BROWSE_MEDIA
+        MediaPlayerEntityFeature.PAUSE
+        | MediaPlayerEntityFeature.VOLUME_SET
+        | MediaPlayerEntityFeature.VOLUME_MUTE
+        | MediaPlayerEntityFeature.PREVIOUS_TRACK
+        | MediaPlayerEntityFeature.NEXT_TRACK
+        | MediaPlayerEntityFeature.SEEK
+        | MediaPlayerEntityFeature.STOP
+        | MediaPlayerEntityFeature.PLAY
+        | MediaPlayerEntityFeature.PLAY_MEDIA
+        | MediaPlayerEntityFeature.VOLUME_STEP
+        | MediaPlayerEntityFeature.SELECT_SOURCE
+        | MediaPlayerEntityFeature.REPEAT_SET
+        | MediaPlayerEntityFeature.SHUFFLE_SET
+        | MediaPlayerEntityFeature.CLEAR_PLAYLIST
+        | MediaPlayerEntityFeature.BROWSE_MEDIA
 )
 
 MINIDSP_LAN = "LAN"
@@ -96,9 +97,9 @@ PRESET_MAP = {
 
 
 async def async_setup_entry(
-    hass: HomeAssistant,
-    config_entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+        hass: HomeAssistant,
+        config_entry: ConfigEntry,
+        async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the Volumio media player platform."""
 
@@ -108,7 +109,6 @@ async def async_setup_entry(
     uid = config_entry.data[CONF_ID]
     name = config_entry.data[CONF_NAME]
     power_switch = config_entry.data[CONF_ENTITY_ID]
-
     entity = Volumio(volumio, uid, name, info, power_switch)
     async_add_entities([entity])
 
@@ -123,6 +123,14 @@ class Volumio(MediaPlayerEntity):
     _attr_source_list = []
     _attr_sound_mode_list = []
     _attr_volume_step = 0.02
+
+    async def on_power_state_change(self, entity_id, old_state, new_state):
+        if new_state == STATE_ON:
+            self._state["status"] = "on"
+        elif new_state == STATE_OFF:
+            self._state["status"] = "standby"
+
+        self.async_write_ha_state()
 
     def __init__(self, volumio, uid, name, info, power_switch) -> None:
         """Initialize the media player."""
@@ -144,6 +152,8 @@ class Volumio(MediaPlayerEntity):
             sw_version=info["systemversion"],
         )
         self._power_switch = power_switch
+        if self._power_switch is not None:
+            async_track_state_change(self.hass, self._power_switch, self.on_power_state_change)
 
     async def _async_build_minidsp_lists(self):
         """For MiniDSP SHD, build list of actual hardware inputs and presets."""
@@ -190,6 +200,7 @@ class Volumio(MediaPlayerEntity):
             self._retry_count += 1
             if self._retry_count > RETRY_LIMIT:
                 self._is_available = self._power_switch is not None
+                self.update_power_switch_state()
                 self._retry_count = 0
 
     @property
@@ -207,19 +218,16 @@ class Volumio(MediaPlayerEntity):
             return MediaPlayerState.PAUSED
         if status == "play":
             return MediaPlayerState.PLAYING
-        if status == "on":
-            return MediaPlayerState.ON
-        if status == "standby":
-            return MediaPlayerState.STANDBY
         # fallback
         if self._power_switch is not None:
-            return MediaPlayerState.ON if self.hass.states.get(self._power_switch).state == STATE_ON else MediaPlayerState.STANDBY
+            return MediaPlayerState.ON if self.hass.states.get(
+                self._power_switch).state == STATE_ON else MediaPlayerState.STANDBY
 
         return MediaPlayerState.IDLE
 
     def update_power_switch_state(self):
         if self._power_switch is not None:
-            self._state = "on" if self.hass.states.get(self._power_switch).state == STATE_ON else "standby"
+            self._state["status"] = "on" if self.hass.states.get(self._power_switch).state == STATE_ON else "standby"
 
     @property
     def media_title(self):
@@ -305,18 +313,14 @@ class Volumio(MediaPlayerEntity):
             await self._volumio.pause()
 
     async def async_turn_off(self) -> None:
-        if self._power_switch is not None and self._state != MediaPlayerState.OFF:
-            await self.hass.services.async_call(
-                domain="switch",
-                service="toggle",
-                service_data={"entity_id": self._power_switch},
-                blocking=True,
-            )
-            self.update_power_switch_state()
+        self.toggle_power()
 
     async def async_turn_on(self) -> None:
-        if self._power_switch is not None and self._state == MediaPlayerState.OFF:
-            await self.hass.services.async_call(
+        self.toggle_power()
+
+    def toggle_power(self) -> None:
+        if self._power_switch is not None:
+            self.hass.services.async_call(
                 domain="switch",
                 service="toggle",
                 service_data={"entity_id": self._power_switch},
@@ -376,15 +380,15 @@ class Volumio(MediaPlayerEntity):
             self._attr_source_list = await self._volumio.get_playlists()
 
     async def async_play_media(
-        self, media_type: MediaType | str, media_id: str, **kwargs: Any
+            self, media_type: MediaType | str, media_id: str, **kwargs: Any
     ) -> None:
         """Send the play_media command to the media player."""
         await self._volumio.replace_and_play(json.loads(media_id))
 
     async def async_browse_media(
-        self,
-        media_content_type: MediaType | str | None = None,
-        media_content_id: str | None = None,
+            self,
+            media_content_type: MediaType | str | None = None,
+            media_content_id: str | None = None,
     ) -> BrowseMedia:
         """Implement the websocket media browsing helper."""
         self.thumbnail_cache = {}
@@ -396,10 +400,10 @@ class Volumio(MediaPlayerEntity):
         )
 
     async def async_get_browse_image(
-        self,
-        media_content_type: MediaType | str,
-        media_content_id: str,
-        media_image_id: str | None = None,
+            self,
+            media_content_type: MediaType | str,
+            media_content_id: str,
+            media_image_id: str | None = None,
     ) -> tuple[bytes | None, str | None]:
         """Get album art from Volumio."""
         cached_url = self.thumbnail_cache.get(media_content_id)
