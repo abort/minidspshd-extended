@@ -238,7 +238,8 @@ class Volumio(MediaPlayerEntity):
 
     def update_power_switch_state(self):
         if self._power_switch is not None:
-            self._state["status"] = "on" if self.hass.states.get(self._power_switch).state == STATE_ON else "standby"
+            self._update_power_state(self.hass.states.get(self._power_switch).state)
+            self._is_available = True
 
     @property
     def media_title(self):
