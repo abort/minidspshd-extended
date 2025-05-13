@@ -130,7 +130,7 @@ class Volumio(MediaPlayerEntity):
         elif state == STATE_OFF:
             self._state["status"] = "standby"
 
-        self.schedule_update_ha_state(True)
+        self.schedule_update_ha_state()
 
     @callback
     def _on_power_state_change(self, event: Event[EventStateChangedData]) -> None:
@@ -324,14 +324,12 @@ class Volumio(MediaPlayerEntity):
             await self._volumio.pause()
 
     async def async_turn_off(self) -> None:
-        await self.toggle_power()
-        self._update_power_state(STATE_OFF)
+        await self.toggle_power(STATE_OFF)
 
     async def async_turn_on(self) -> None:
-        await self.toggle_power()
-        self._update_power_state(STATE_ON)
+        await self.toggle_power(STATE_ON)
 
-    async def toggle_power(self) -> None:
+    async def toggle_power(self, new_state) -> None:
         if self._power_switch is not None:
             await self.hass.services.async_call(
                 domain="switch",
@@ -339,6 +337,7 @@ class Volumio(MediaPlayerEntity):
                 service_data={"entity_id": self._power_switch},
                 blocking=True,
             )
+            self._update_power_state(new_state)
 
     async def async_media_stop(self) -> None:
         """Send media_stop command to media player."""
