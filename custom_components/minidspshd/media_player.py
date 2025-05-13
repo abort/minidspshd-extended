@@ -109,7 +109,7 @@ async def async_setup_entry(
     uid = config_entry.data[CONF_ID]
     name = config_entry.data[CONF_NAME]
     power_switch = config_entry.data[CONF_ENTITY_ID]
-    entity = Volumio(volumio, uid, name, info, power_switch)
+    entity = Volumio(hass, volumio, uid, name, info, power_switch)
     async_add_entities([entity])
 
 
@@ -133,7 +133,7 @@ class Volumio(MediaPlayerEntity):
 
         self.async_schedule_update_ha_state(True)
 
-    def __init__(self, volumio, uid, name, info, power_switch) -> None:
+    def __init__(self, hass, volumio, uid, name, info, power_switch) -> None:
         """Initialize the media player."""
         self._volumio = volumio
         unique_id = uid
@@ -152,10 +152,8 @@ class Volumio(MediaPlayerEntity):
             name=name,
             sw_version=info["systemversion"],
         )
-        self._power_switch = power_switch
         self._power_updates_unsub = None
-
-    async def async_added_to_hass(self) -> None:
+        self._power_switch = power_switch
         if self._power_switch is not None:
             self._power_updates_unsub = async_track_state_change_event(self.hass, self._power_switch, self._on_power_state_change)
 
