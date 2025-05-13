@@ -155,7 +155,7 @@ class Volumio(MediaPlayerEntity):
         self._power_updates_unsub = None
         self._power_switch = power_switch
         if self._power_switch is not None:
-            self._power_updates_unsub = async_track_state_change_event(self.hass, self._power_switch, self._on_power_state_change)
+            self._power_updates_unsub = async_track_state_change_event(hass, self._power_switch, self._on_power_state_change)
 
     async def async_will_remove_from_hass(self) -> None:
         if self._power_updates_unsub is not None:
