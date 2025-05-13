@@ -176,7 +176,14 @@ class Volumio(MediaPlayerEntity):
     async def async_update(self) -> None:
         """Update state."""
         try:
-            self._is_available = self._power_switch is not None
+            if self._power_switch is not None:
+                power_state = self.hass.states.get(self._power_switch).state
+                self._update_power_state(power_state)
+                self._is_available = True
+
+                # no need to poll
+                if power_state == STATE_OFF:
+                    return
 
             if self._systeminfo is None:
                 async with asyncio.timeout(VOLUMIO_REQUEST_TIMEOUT):
@@ -209,7 +216,6 @@ class Volumio(MediaPlayerEntity):
             # mark as unavailable after several consecutive failures
             self._retry_count += 1
             if self._retry_count > RETRY_LIMIT:
-                self.update_power_switch_state()
                 self._retry_count = 0
 
     @property
@@ -235,11 +241,6 @@ class Volumio(MediaPlayerEntity):
             return MediaPlayerState.ON
 
         return MediaPlayerState.IDLE
-
-    def update_power_switch_state(self):
-        if self._power_switch is not None:
-            self._update_power_state(self.hass.states.get(self._power_switch).state)
-            self._is_available = True
 
     @property
     def media_title(self):
