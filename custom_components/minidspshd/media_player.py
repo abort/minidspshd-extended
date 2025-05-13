@@ -135,7 +135,6 @@ class Volumio(MediaPlayerEntity):
 
     def __init__(self, volumio, uid, name, info, power_switch) -> None:
         """Initialize the media player."""
-        super().__init__()
         self._volumio = volumio
         unique_id = uid
         self._state = {}
@@ -154,8 +153,15 @@ class Volumio(MediaPlayerEntity):
             sw_version=info["systemversion"],
         )
         self._power_switch = power_switch
+        self._power_updates_unsub = None
+
+    async def async_added_to_hass(self) -> None:
         if self._power_switch is not None:
-            async_track_state_change_event(self.hass, self._power_switch, self._on_power_state_change)
+            self._power_updates_unsub = async_track_state_change_event(self.hass, self._power_switch, self._on_power_state_change)
+
+    async def async_will_remove_from_hass(self) -> None:
+        if self._power_updates_unsub is not None:
+            self._power_updates_unsub()
 
     async def _async_build_minidsp_lists(self):
         """For MiniDSP SHD, build list of actual hardware inputs and presets."""
