@@ -323,20 +323,19 @@ class Volumio(MediaPlayerEntity):
             await self._volumio.pause()
 
     async def async_turn_off(self) -> None:
-        self.toggle_power()
+        await self.toggle_power()
 
     async def async_turn_on(self) -> None:
-        self.toggle_power()
+        await self.toggle_power()
 
-    def toggle_power(self) -> None:
+    async def toggle_power(self) -> None:
         if self._power_switch is not None:
-            self.hass.services.async_call(
+            await self.hass.services.async_call(
                 domain="switch",
                 service="toggle",
                 service_data={"entity_id": self._power_switch},
                 blocking=True,
             )
-            self.update_power_switch_state()
 
     async def async_media_stop(self) -> None:
         """Send media_stop command to media player."""
