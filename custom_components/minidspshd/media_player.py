@@ -124,14 +124,17 @@ class Volumio(MediaPlayerEntity):
     _attr_sound_mode_list = []
     _attr_volume_step = 0.02
 
-    @callback
-    def _on_power_state_change(self, event: Event[EventStateChangedData]) -> None:
-        if event.data["new_state"] == STATE_ON:
+    def _update_power_state(self, state):
+        if state == STATE_ON:
             self._state["status"] = "on"
-        elif event.data["new_state"] == STATE_OFF:
+        elif state == STATE_OFF:
             self._state["status"] = "standby"
 
-        self.async_schedule_update_ha_state(True)
+        self.schedule_update_ha_state(True)
+
+    @callback
+    def _on_power_state_change(self, event: Event[EventStateChangedData]) -> None:
+        self._update_power_state(event.data["new_state"])
 
     def __init__(self, hass, volumio, uid, name, info, power_switch) -> None:
         """Initialize the media player."""
@@ -322,9 +325,11 @@ class Volumio(MediaPlayerEntity):
 
     async def async_turn_off(self) -> None:
         await self.toggle_power()
+        self._update_power_state(STATE_OFF)
 
     async def async_turn_on(self) -> None:
         await self.toggle_power()
+        self._update_power_state(STATE_ON)
 
     async def toggle_power(self) -> None:
         if self._power_switch is not None:
