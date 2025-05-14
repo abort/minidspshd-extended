@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 from dataclasses import dataclass
 from threading import Thread
 from typing import Any, Callable
@@ -72,7 +73,7 @@ class MiniDSPApiConnection:
             self.ws.close()
 
     def update_last_state(self, payload):
-        prev_state = self.last_state
+        prev_state = dataclasses.replace(self.last_state)
         new_data = payload.get("master", {})
         self.last_state.dirac = new_data.get("dirac", self.last_state.dirac)
         self.last_state.mute = new_data.get("mute", self.last_state.mute)
