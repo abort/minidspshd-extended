@@ -36,7 +36,7 @@ from homeassistant.helpers.event import async_track_state_change_event
 
 from .browse_media import browse_node, browse_top_level
 from .const import DATA_INFO, DATA_VOLUMIO, DOMAIN, MINIDSP_VARIANT
-from .minidsp_api import MiniDSPApi, MiniDSPApiConnection
+from .minidsp_api import MiniDSPApi, MiniDSPApiConnection, MiniDSPState
 
 _LOGGER = logging.getLogger(__name__)
 # three possible sets of features: MiniDSP as a DAC, MiniDSP as a Volumio server, normal Volumio
@@ -147,16 +147,11 @@ class Volumio(MediaPlayerEntity, RestoreEntity):
     def _on_power_state_change(self, event: Event[EventStateChangedData]) -> None:
         self._update_power_state(event.data["new_state"])
 
-    def _on_minidsp_update(self, data: dict[str, Any]) -> None:
+    def _on_minidsp_update(self, data: MiniDSPState) -> None:
         _LOGGER.info(f"received minidsp update: {data}")
-        master = data.get("master", {})
-        preset = master.get("preset")
-        if preset is not None:
-            preset = int(preset) + 1
-            self._attr_sound_mode = f"Preset {preset}"
-        muted = master.get("mute")
-        if muted is not None:
-            self._attr_is_volume_muted = str_to_bool(muted)
+        self._attr_sound_mode = f"Preset {int(data.preset) + 1}"
+        self._attr_is_volume_muted = data.mute
+        self._is_available = True
 
         self.schedule_update_ha_state()
 

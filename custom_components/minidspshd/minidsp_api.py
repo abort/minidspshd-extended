@@ -44,42 +44,47 @@ class MiniDSPApi:
     def get_ws_device_url(self, poll: bool = True) -> str:
         return "ws://{}:{}/devices/{}?poll={}".format(self.host, self.port, self.device_id, poll)
 
+@dataclass
+class MiniDSPState:
+    """Class to keep track of MiniDSP state."""
+    preset: int = 0
+    source: str = "Lan"
+    volume: float = -127.0
+    mute: bool = False
+    dirac: bool = False
+
+    has_changed: bool = False
+
 class MiniDSPApiConnection:
     api: MiniDSPApi
     ws: websocket.WebSocketApp | None
-    last_state: dict[str, Any] = {}
+    last_state: MiniDSPState
     thread: Thread | None = None
-    on_updated_callback: Callable[[dict[str, Any]], None] | None = None
+    on_updated_callback: Callable[[MiniDSPState], None] | None = None
 
     def __init__(self, api, last_state):
         self.on_updated_callback = None
         self.api = api
-        self.last_state = last_state
+        self.last_state = MiniDSPState()
 
     def __del__(self):
         if self.ws:
             self.ws.close()
 
-    def merge_dicts(self, source, updates):
-        """
-        Recursively merge two dictionaries. If a key exists in both, and its value is a dictionary,
-        merge them recursively. Otherwise, take the value from `updates`.
-        """
-        for key, value in updates.items():
-            # If the value is a dictionary and the key exists in the source as a dictionary, recurse
-            if isinstance(value, dict) and key in source and isinstance(source[key], dict):
-                self.merge_dicts(source[key], value)
-            else:
-                # Otherwise, set or update the key in the source
-                source[key] = value
-        return source
+    def update_last_state(self, new_data):
+        prev_state = self.last_state
+        self.last_state.dirac = new_data.get("dirac", self.last_state.dirac)
+        self.last_state.mute = new_data.get("mute", self.last_state.mute)
+        self.last_state.volume = new_data.get("volume", self.last_state.volume)
+        self.last_state.preset = new_data.get("preset", self.last_state.preset)
+        self.last_state.source = new_data.get("source", self.last_state.source)
+        self.last_state.has_changed = prev_state != self.last_state
 
     def on_message(self, _, msg):
         new_data = dict(json.loads(msg))
         _LOGGER.info(f"Received new data: {new_data}, old: {self.last_state}")
-        prev_state = self.last_state
-        self.last_state = self.merge_dicts(self.last_state, new_data)
-        if prev_state != self.last_state and self.on_updated_callback is not None:
+        self.update_last_state(new_data)
+        if self.last_state.has_changed and self.on_updated_callback is not None:
             _LOGGER.info(f"Calling on_updated_callback callback")
             self.on_updated_callback(self.last_state)
 
@@ -95,7 +100,6 @@ class MiniDSPApiConnection:
             return self.last_state
 
         result = requests.get(self.api.get_device_url())
-        new_data = dict(result.json())
-        self.last_state = self.merge_dicts(self.last_state, new_data)
+        self.update_last_state(dict(result.json()))
 
         return self.last_state
