@@ -58,7 +58,7 @@ class MiniDSPApiConnection:
     def on_message(self, _, msg):
         new_data = dict(json.loads(msg))
         prev_state = self.last_state
-        self.last_state += new_data
+        self.last_state |= new_data
         if prev_state != self.last_state and self.on_updated_callback is not None:
             self.on_updated_callback(self.last_state)
 
@@ -74,6 +74,6 @@ class MiniDSPApiConnection:
             return self.last_state
 
         result = requests.get(self.api.get_device_url())
-        self.last_state += dict(result.json())
+        self.last_state |= dict(result.json())
 
         return self.last_state
