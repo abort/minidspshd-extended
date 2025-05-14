@@ -154,11 +154,11 @@ class Volumio(MediaPlayerEntity, RestoreEntity):
     def _on_minidsp_update(self, data: MiniDSPState) -> None:
         _LOGGER.info(f"received minidsp update: {data}")
         s = "ON" if data.dirac else "OFF"
+        self.make_dirac_preset_map(data.dirac)
         self._attr_sound_mode = f"Preset {int(data.preset) + 1} (Dirac: {s})"
         self._attr_is_volume_muted = data.mute
-        self._state["mute"] = True
+        self._state["mute"] = data.mute
         self._is_available = True
-        self.make_dirac_preset_map(data.dirac)
 
         self.schedule_update_ha_state()
 
