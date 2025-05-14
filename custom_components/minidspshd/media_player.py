@@ -179,6 +179,7 @@ class Volumio(MediaPlayerEntity, RestoreEntity):
         )
         self._power_updates_unsub = None
         self._power_switch = power_switch
+        self.hass = hass
         if self._power_switch is not None:
             self._power_updates_unsub = async_track_state_change_event(hass, self._power_switch, self._on_power_state_change)
 
@@ -196,8 +197,10 @@ class Volumio(MediaPlayerEntity, RestoreEntity):
         """Handle entity addition to Home Assistant."""
         await super().async_added_to_hass()
 
-        power_state = self.hass.states.get(self._power_switch).state
-        self._update_power_state(power_state)
+        if self._power_switch is not None:
+            power_state = self.hass.states.get(self._power_switch).state
+            self._update_power_state(power_state)
+
         self._is_available = True
 
     async def _async_build_minidsp_lists(self):
