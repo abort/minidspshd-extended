@@ -1,0 +1,11 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "sections": {
+          "minidsp_api": "mdi:api"
+        }
+      }
+    }
+  }
+}

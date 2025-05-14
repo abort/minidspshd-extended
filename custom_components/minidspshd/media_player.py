@@ -35,6 +35,7 @@ from homeassistant.helpers.event import async_track_state_change_event
 
 from .browse_media import browse_node, browse_top_level
 from .const import DATA_INFO, DATA_VOLUMIO, DOMAIN, MINIDSP_VARIANT
+from .minidsp_api import MiniDSPApi, MiniDSPApiConnection
 
 # three possible sets of features: MiniDSP as a DAC, MiniDSP as a Volumio server, normal Volumio
 
@@ -110,8 +111,15 @@ async def async_setup_entry(
     uid = config_entry.data[CONF_ID]
     name = config_entry.data[CONF_NAME]
     power_switch = config_entry.data[CONF_ENTITY_ID]
-    entity = Volumio(hass, volumio, uid, name, info, power_switch)
+    api = None
+    if config_entry.data.get("api", None) is not None:
+        api = MiniDSPApi.from_dict(config_entry.data["api"])
+    entity = Volumio(hass, volumio, uid, name, info, power_switch, api)
     async_add_entities([entity])
+
+
+def str_to_bool(v):
+    return str(v).lower() in ("yes", "true", "t", "1")
 
 
 class Volumio(MediaPlayerEntity, RestoreEntity):
@@ -137,7 +145,20 @@ class Volumio(MediaPlayerEntity, RestoreEntity):
     def _on_power_state_change(self, event: Event[EventStateChangedData]) -> None:
         self._update_power_state(event.data["new_state"])
 
-    def __init__(self, hass, volumio, uid, name, info, power_switch) -> None:
+    @callback
+    def _on_minidsp_update(self, data: dict[str, Any]) -> None:
+        master = data.get("master", {})
+        preset = master.get("preset")
+        if preset is not None:
+            preset = int(preset) + 1
+            self._attr_sound_mode = f"Preset {preset}"
+        muted = master.get("mute")
+        if muted is not None:
+            self._attr_is_volume_muted = str_to_bool(muted)
+
+        self.schedule_update_ha_state()
+
+    def __init__(self, hass, volumio, uid, name, info, power_switch, api) -> None:
         """Initialize the media player."""
         self._volumio = volumio
         unique_id = uid
@@ -160,6 +181,12 @@ class Volumio(MediaPlayerEntity, RestoreEntity):
         self._power_switch = power_switch
         if self._power_switch is not None:
             self._power_updates_unsub = async_track_state_change_event(hass, self._power_switch, self._on_power_state_change)
+
+        if api is not None:
+            self._api_connection = MiniDSPApiConnection(api, {})
+            if api.websocket:
+                self._api_connection.establish_connection(self._on_minidsp_update)
+
 
     async def async_will_remove_from_hass(self) -> None:
         if self._power_updates_unsub is not None:
@@ -288,7 +315,7 @@ class Volumio(MediaPlayerEntity, RestoreEntity):
     @property
     def sound_mode(self) -> str | None:
         """The current mode cannot be read via the API, so just return None."""
-        return None
+        return self._attr_sound_mode
 
     @property
     def volume_level(self):

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import asdict
 from typing import Any
 
 import voluptuous as vol
@@ -10,13 +11,15 @@ from homeassistant.components import zeroconf
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.const import CONF_HOST, CONF_ID, CONF_NAME, CONF_PORT, CONF_ENTITY_ID
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.data_entry_flow import section
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers.entity_registry import async_get
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.entity_registry import async_get
 from homeassistant.helpers.selector import EntitySelector, EntitySelectorConfig
 from pyvolumio import CannotConnectError, Volumio
 
 from .const import DOMAIN
+from .minidsp_api import MiniDSPApi
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -24,12 +27,19 @@ DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_HOST): str,
         vol.Required(CONF_PORT, default=3000): int,
-        vol.Optional(CONF_ENTITY_ID, description="Switch that toggles the power of the MiniDSP"): EntitySelector(EntitySelectorConfig(domain="switch")),
+        vol.Optional(CONF_ENTITY_ID): EntitySelector(
+            EntitySelectorConfig(domain="switch")),
+        vol.Optional("minidsp_api"): section(vol.Schema({
+            vol.Required(CONF_HOST): str,
+            vol.Required(CONF_PORT, default=8080): int,
+            vol.Required("device_id", default=0): int,
+            vol.Required("websocket", default=True): bool,
+        }), {"collapsed": True})
     }
 )
 
 
-async def validate_input(hass: HomeAssistant, host: str, port: int) -> dict[str, Any]:
+async def validate_volumio_input(hass: HomeAssistant, host: str, port: int) -> dict[str, Any]:
     """Validate the user input allows us to connect."""
     volumio = Volumio(host, port, async_get_clientsession(hass))
     try:
@@ -48,6 +58,7 @@ class VolumioConfigFlow(ConfigFlow, domain=DOMAIN):
     _name: str
     _uuid: str | None
     _power: str | None
+    _api: MiniDSPApi | None
 
     @callback
     def _async_get_entry(self) -> ConfigFlowResult:
@@ -59,6 +70,7 @@ class VolumioConfigFlow(ConfigFlow, domain=DOMAIN):
                 CONF_PORT: self._port,
                 CONF_ID: self._uuid,
                 CONF_ENTITY_ID: self._power,
+                "api": asdict(self._api)
             },
         )
 
@@ -91,8 +103,25 @@ class VolumioConfigFlow(ConfigFlow, domain=DOMAIN):
                 else:
                     self._power = user_input[CONF_ENTITY_ID]
 
+            api = user_input.get("minidsp_api", None)
+            if api is not None:
+                api_host = api.get("host", None)
+                if api_host is None:
+                    errors["minidsp_api"] = "not_filled_in"
+
+                api_port = int(api["port"])
+                device_id = int(api["device_id"])
+                api_ws = api["websocket"]
+                self._api = MiniDSPApi(api_host, api_port, device_id, api_ws)
+                try:
+                    self._api.verify_connection()
+                    self._api.verify_ws_connection()
+                except Exception as error:
+                    errors["minidsp_api"] = "cannot_connect"
+                    raise CannotConnect from error
+
             try:
-                info = await validate_input(self.hass, self._host, self._port)
+                info = await validate_volumio_input(self.hass, self._host, self._port)
 
             except CannotConnect:
                 errors["base"] = "cannot_connect"
@@ -121,6 +150,7 @@ class VolumioConfigFlow(ConfigFlow, domain=DOMAIN):
         self._name = discovery_info.properties["volumioName"]
         self._uuid = discovery_info.properties["UUID"]
         self._power = None
+        self._api = None
 
         await self._set_uid_and_abort()
 
@@ -132,7 +162,7 @@ class VolumioConfigFlow(ConfigFlow, domain=DOMAIN):
         """Handle user-confirmation of discovered node."""
         if user_input is not None:
             try:
-                await validate_input(self.hass, self._host, self._port)
+                await validate_volumio_input(self.hass, self._host, self._port)
                 return self._async_get_entry()
             except CannotConnect:
                 return self.async_abort(reason="cannot_connect")
