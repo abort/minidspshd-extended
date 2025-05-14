@@ -9,6 +9,9 @@ import requests
 
 import websocket
 
+import logging
+
+_LOGGER = logging.getLogger(__name__)
 
 @dataclass
 class MiniDSPApi:
@@ -59,6 +62,7 @@ class MiniDSPApiConnection:
 
     def on_message(self, _, msg):
         new_data = dict(json.loads(msg))
+        _LOGGER.info(f"Received new data: {new_data}, old: {self.last_state}")
         prev_state = self.last_state
         self.last_state |= new_data
         if prev_state != self.last_state and self.on_updated_callback is not None:
