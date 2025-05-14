@@ -147,11 +147,17 @@ class Volumio(MediaPlayerEntity, RestoreEntity):
     def _on_power_state_change(self, event: Event[EventStateChangedData]) -> None:
         self._update_power_state(event.data["new_state"])
 
+    def make_dirac_preset_map(self, dirac: bool):
+        s = "ON" if dirac else "OFF"
+        self._attr_sound_mode_list = sorted({ f"{k} (Dirac: {s})": v for k, v in PRESET_MAP.items() })
+
     def _on_minidsp_update(self, data: MiniDSPState) -> None:
         _LOGGER.info(f"received minidsp update: {data}")
         self._attr_sound_mode = f"Preset {int(data.preset) + 1}"
         self._attr_is_volume_muted = data.mute
+        self._state["mute"] = True
         self._is_available = True
+        self.make_dirac_preset_map(data.dirac)
 
         self.schedule_update_ha_state()
 
