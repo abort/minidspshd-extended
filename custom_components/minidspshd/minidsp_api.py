@@ -49,7 +49,7 @@ class MiniDSPApiConnection:
     ws: websocket.WebSocketApp | None
     last_state: dict[str, Any] = {}
     thread: Thread | None = None
-    on_update: Callable[[dict[str, Any]], None] | None = None
+    on_updated_callback: Callable[[dict[str, Any]], None] | None = None
 
     def __init__(self, api, last_state):
         self.on_updated_callback = None
@@ -64,8 +64,9 @@ class MiniDSPApiConnection:
         new_data = dict(json.loads(msg))
         _LOGGER.info(f"Received new data: {new_data}, old: {self.last_state}")
         prev_state = self.last_state
-        self.last_state |= new_data
+        self.last_state = {**prev_state, **new_data}
         if prev_state != self.last_state and self.on_updated_callback is not None:
+            _LOGGER.info(f"Calling on_updated_callback callback")
             self.on_updated_callback(self.last_state)
 
     def establish_connection(self, on_updated: Callable[[dict[str, Any]], None]):
@@ -80,6 +81,6 @@ class MiniDSPApiConnection:
             return self.last_state
 
         result = requests.get(self.api.get_device_url())
-        self.last_state |= dict(result.json())
+        self.last_state = {**self.last_state, **dict(result.json())}
 
         return self.last_state

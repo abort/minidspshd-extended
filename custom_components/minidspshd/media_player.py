@@ -147,7 +147,6 @@ class Volumio(MediaPlayerEntity, RestoreEntity):
     def _on_power_state_change(self, event: Event[EventStateChangedData]) -> None:
         self._update_power_state(event.data["new_state"])
 
-    @callback
     def _on_minidsp_update(self, data: dict[str, Any]) -> None:
         _LOGGER.info(f"received minidsp update: {data}")
         master = data.get("master", {})
