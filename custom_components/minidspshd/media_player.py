@@ -30,13 +30,14 @@ from homeassistant.core import HomeAssistant, callback, Event, EventStateChanged
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
-from homeassistant.util import Throttle
+from homeassistant.util import Throttle, logging
 from homeassistant.helpers.event import async_track_state_change_event
 
 from .browse_media import browse_node, browse_top_level
 from .const import DATA_INFO, DATA_VOLUMIO, DOMAIN, MINIDSP_VARIANT
 from .minidsp_api import MiniDSPApi, MiniDSPApiConnection
 
+_LOGGER = logging.getLogger(__name__)
 # three possible sets of features: MiniDSP as a DAC, MiniDSP as a Volumio server, normal Volumio
 
 FEATURES_AS_DAC = (
@@ -147,6 +148,7 @@ class Volumio(MediaPlayerEntity, RestoreEntity):
 
     @callback
     def _on_minidsp_update(self, data: dict[str, Any]) -> None:
+        _LOGGER.info(f"received minidsp update: {data}")
         master = data.get("master", {})
         preset = master.get("preset")
         if preset is not None:
@@ -186,6 +188,7 @@ class Volumio(MediaPlayerEntity, RestoreEntity):
         if api is not None:
             self._api_connection = MiniDSPApiConnection(api, {})
             if api.websocket:
+                _LOGGER.info("connecting websocket for minidsp")
                 self._api_connection.establish_connection(self._on_minidsp_update)
 
 

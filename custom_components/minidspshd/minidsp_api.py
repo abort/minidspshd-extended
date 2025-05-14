@@ -46,8 +46,10 @@ class MiniDSPApiConnection:
     ws: websocket.WebSocketApp | None
     last_state: dict[str, Any] = {}
     thread: Thread | None = None
+    on_update: Callable[[dict[str, Any]], None] | None = None
 
     def __init__(self, api, last_state):
+        self.on_updated_callback = None
         self.api = api
         self.last_state = last_state
 
