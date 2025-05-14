@@ -60,11 +60,25 @@ class MiniDSPApiConnection:
         if self.ws:
             self.ws.close()
 
+    def merge_dicts(self, source, updates):
+        """
+        Recursively merge two dictionaries. If a key exists in both, and its value is a dictionary,
+        merge them recursively. Otherwise, take the value from `updates`.
+        """
+        for key, value in updates.items():
+            # If the value is a dictionary and the key exists in the source as a dictionary, recurse
+            if isinstance(value, dict) and key in source and isinstance(source[key], dict):
+                self.merge_dicts(source[key], value)
+            else:
+                # Otherwise, set or update the key in the source
+                source[key] = value
+        return source
+
     def on_message(self, _, msg):
         new_data = dict(json.loads(msg))
         _LOGGER.info(f"Received new data: {new_data}, old: {self.last_state}")
         prev_state = self.last_state
-        self.last_state = {**prev_state, **new_data}
+        self.merge_dicts(self.last_state, new_data)
         if prev_state != self.last_state and self.on_updated_callback is not None:
             _LOGGER.info(f"Calling on_updated_callback callback")
             self.on_updated_callback(self.last_state)
@@ -81,6 +95,7 @@ class MiniDSPApiConnection:
             return self.last_state
 
         result = requests.get(self.api.get_device_url())
-        self.last_state = {**self.last_state, **dict(result.json())}
+        new_data = dict(result.json())
+        self.merge_dicts(self.last_state, new_data)
 
         return self.last_state
