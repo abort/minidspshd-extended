@@ -78,7 +78,7 @@ class MiniDSPApiConnection:
         new_data = dict(json.loads(msg))
         _LOGGER.info(f"Received new data: {new_data}, old: {self.last_state}")
         prev_state = self.last_state
-        self.merge_dicts(self.last_state, new_data)
+        self.last_state = self.merge_dicts(self.last_state, new_data)
         if prev_state != self.last_state and self.on_updated_callback is not None:
             _LOGGER.info(f"Calling on_updated_callback callback")
             self.on_updated_callback(self.last_state)
@@ -96,6 +96,6 @@ class MiniDSPApiConnection:
 
         result = requests.get(self.api.get_device_url())
         new_data = dict(result.json())
-        self.merge_dicts(self.last_state, new_data)
+        self.last_state = self.merge_dicts(self.last_state, new_data)
 
         return self.last_state
