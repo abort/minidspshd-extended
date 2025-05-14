@@ -216,7 +216,8 @@ class Volumio(MediaPlayerEntity, RestoreEntity):
             self._source_map[item["title"]] = item["uri"]
         self._source_map[MINIDSP_LAN] = '{"uri":"/mnt/NONEXISTENT.flac"}'
         self._attr_source_list = sorted(self._source_map)
-        self._attr_sound_mode_list = sorted(PRESET_MAP)
+        if self._api_connection is None or self._api_connection.api.websocket is False:
+            self._attr_sound_mode_list = sorted(PRESET_MAP)
 
     async def async_update(self) -> None:
         """Update state."""
