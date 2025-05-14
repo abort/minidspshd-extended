@@ -115,8 +115,8 @@ class VolumioConfigFlow(ConfigFlow, domain=DOMAIN):
                 api_instance = MiniDSPApi(api_host, api_port, device_id, api_ws)
                 self._api = api_instance
                 try:
-                    await self.hass.async_add_executor_job(self._api.verify_connection, api_instance)
-                    await self.hass.async_add_executor_job(self._api.verify_ws_connection, api_instance)
+                    await self.hass.async_add_executor_job(self._api.verify_connection)
+                    await self.hass.async_add_executor_job(self._api.verify_ws_connection)
                 except Exception as error:
                     errors["minidsp_api"] = "cannot_connect"
                     raise CannotConnect from error
