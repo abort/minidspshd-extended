@@ -71,8 +71,9 @@ class MiniDSPApiConnection:
         if self.ws:
             self.ws.close()
 
-    def update_last_state(self, new_data):
+    def update_last_state(self, payload):
         prev_state = self.last_state
+        new_data = payload.get("master", {})
         self.last_state.dirac = new_data.get("dirac", self.last_state.dirac)
         self.last_state.mute = new_data.get("mute", self.last_state.mute)
         self.last_state.volume = new_data.get("volume", self.last_state.volume)
