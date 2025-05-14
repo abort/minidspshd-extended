@@ -10,6 +10,7 @@ device via the normal Volumio API.
 from __future__ import annotations
 
 import asyncio
+import logging
 from datetime import timedelta
 import json
 from typing import Any
@@ -30,7 +31,7 @@ from homeassistant.core import HomeAssistant, callback, Event, EventStateChanged
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
-from homeassistant.util import Throttle, logging
+from homeassistant.util import Throttle
 from homeassistant.helpers.event import async_track_state_change_event
 
 from .browse_media import browse_node, browse_top_level
