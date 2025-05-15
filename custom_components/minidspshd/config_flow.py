@@ -18,7 +18,7 @@ from homeassistant.helpers.entity_registry import async_get
 from homeassistant.helpers.selector import EntitySelector, EntitySelectorConfig
 from pyvolumio import CannotConnectError, Volumio
 
-from .const import DOMAIN
+from .const import DOMAIN, CONF_MINIDSP_API, CONF_MINIDSP_API_DEVICE_ID
 from .minidsp_api import MiniDSPApi
 
 _LOGGER = logging.getLogger(__name__)
@@ -29,12 +29,11 @@ DATA_SCHEMA = vol.Schema(
         vol.Required(CONF_PORT, default=3000): int,
         vol.Optional(CONF_ENTITY_ID): EntitySelector(
             EntitySelectorConfig(domain="switch")),
-        vol.Optional("minidsp_api"): section(vol.Schema({
+        vol.Optional(CONF_MINIDSP_API): section(vol.Schema({
             vol.Required(CONF_HOST): str,
-            vol.Required(CONF_PORT, default=8080): int,
-            vol.Required("device_id", default=0): int,
-            vol.Required("websocket", default=True): bool,
-        }), {"collapsed": True})
+            vol.Required(CONF_PORT, default=5380): int,
+            vol.Required(CONF_MINIDSP_API_DEVICE_ID, default=0): int,
+        }))
     }
 )
 
@@ -70,7 +69,7 @@ class VolumioConfigFlow(ConfigFlow, domain=DOMAIN):
                 CONF_PORT: self._port,
                 CONF_ID: self._uuid,
                 CONF_ENTITY_ID: self._power,
-                "api": asdict(self._api)
+                CONF_MINIDSP_API: asdict(self._api)
             },
         )
 
@@ -103,22 +102,20 @@ class VolumioConfigFlow(ConfigFlow, domain=DOMAIN):
                 else:
                     self._power = user_input[CONF_ENTITY_ID]
 
-            api = user_input.get("minidsp_api", None)
+            api = user_input.get(CONF_MINIDSP_API, None)
             if api is not None:
-                api_host = api.get("host", None)
+                api_host = api.get(CONF_HOST, None)
                 if api_host is None:
-                    errors["minidsp_api"] = "not_filled_in"
+                    errors[CONF_MINIDSP_API] = "not_filled_in"
 
-                api_port = int(api["port"])
-                device_id = int(api["device_id"])
-                api_ws = api["websocket"]
-                api_instance = MiniDSPApi(api_host, api_port, device_id, api_ws)
+                api_port = int(api[CONF_PORT])
+                device_id = int(api[CONF_MINIDSP_API_DEVICE_ID])
+                api_instance = MiniDSPApi(api_host, api_port, device_id)
                 self._api = api_instance
                 try:
-                    await self.hass.async_add_executor_job(self._api.verify_connection)
                     await self.hass.async_add_executor_job(self._api.verify_ws_connection)
                 except Exception as error:
-                    errors["minidsp_api"] = "cannot_connect"
+                    errors[CONF_MINIDSP_API] = "cannot_connect"
                     raise CannotConnect from error
 
             try:

@@ -26,7 +26,8 @@ from homeassistant.components.media_player import (
     RepeatMode,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_ID, CONF_NAME, CONF_ENTITY_ID, STATE_ON, STATE_OFF
+from homeassistant.const import CONF_ID, CONF_NAME, CONF_ENTITY_ID, STATE_ON, STATE_OFF, SERVICE_TURN_ON, \
+    SERVICE_TURN_OFF
 from homeassistant.core import HomeAssistant, callback, Event, EventStateChangedData
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -35,7 +36,7 @@ from homeassistant.util import Throttle
 from homeassistant.helpers.event import async_track_state_change_event
 
 from .browse_media import browse_node, browse_top_level
-from .const import DATA_INFO, DATA_VOLUMIO, DOMAIN, MINIDSP_VARIANT
+from .const import DATA_INFO, DATA_VOLUMIO, DOMAIN, MINIDSP_VARIANT, CONF_MINIDSP_API
 from .minidsp_api import MiniDSPApi, MiniDSPApiConnection, MiniDSPState
 
 _LOGGER = logging.getLogger(__name__)
@@ -114,15 +115,10 @@ async def async_setup_entry(
     name = config_entry.data[CONF_NAME]
     power_switch = config_entry.data[CONF_ENTITY_ID]
     api = None
-    if config_entry.data.get("api", None) is not None:
-        api = MiniDSPApi.from_dict(config_entry.data["api"])
+    if config_entry.data.get(CONF_MINIDSP_API, None) is not None:
+        api = MiniDSPApi.from_dict(config_entry.data[CONF_MINIDSP_API])
     entity = Volumio(hass, volumio, uid, name, info, power_switch, api)
     async_add_entities([entity])
-
-
-def str_to_bool(v):
-    return str(v).lower() in ("yes", "true", "t", "1")
-
 
 class Volumio(MediaPlayerEntity, RestoreEntity):
     """Volumio Player Object."""
@@ -145,7 +141,15 @@ class Volumio(MediaPlayerEntity, RestoreEntity):
 
     @callback
     def _on_power_state_change(self, event: Event[EventStateChangedData]) -> None:
-        self._update_power_state(event.data["new_state"])
+        new_state = event.data["new_state"]
+        self._update_power_state(new_state)
+
+        if new_state == STATE_ON:
+            _LOGGER.info("Reconnecting websocket due to power switch being on")
+            self._api_connection.establish_connection(self._on_minidsp_update)
+        else:
+            _LOGGER.info("Disconnecting websocket due to power switch being off")
+            self._api_connection.disconnect()
 
     def make_dirac_preset_map(self, dirac: bool):
         s = "ON" if dirac else "OFF"
@@ -189,9 +193,7 @@ class Volumio(MediaPlayerEntity, RestoreEntity):
 
         if api is not None:
             self._api_connection = MiniDSPApiConnection(api, {})
-            if api.websocket:
-                _LOGGER.info("connecting websocket for minidsp")
-                self._api_connection.establish_connection(self._on_minidsp_update)
+            self._api_connection.establish_connection(self._on_minidsp_update)
 
 
     async def async_will_remove_from_hass(self) -> None:
@@ -216,7 +218,7 @@ class Volumio(MediaPlayerEntity, RestoreEntity):
             self._source_map[item["title"]] = item["uri"]
         self._source_map[MINIDSP_LAN] = '{"uri":"/mnt/NONEXISTENT.flac"}'
         self._attr_source_list = sorted(self._source_map)
-        if self._api_connection is None or self._api_connection.api.websocket is False:
+        if self._api_connection is None:
             self._attr_sound_mode_list = sorted(PRESET_MAP)
 
     async def async_update(self) -> None:
@@ -379,9 +381,10 @@ class Volumio(MediaPlayerEntity, RestoreEntity):
 
     async def toggle_power(self, new_state) -> None:
         if self._power_switch is not None:
+            service = SERVICE_TURN_ON if new_state == STATE_ON else SERVICE_TURN_OFF
             await self.hass.services.async_call(
                 domain="switch",
-                service="toggle",
+                service=service,
                 service_data={"entity_id": self._power_switch},
                 blocking=True,
             )
