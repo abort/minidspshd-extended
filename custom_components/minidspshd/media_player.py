@@ -148,10 +148,7 @@ class Volumio(MediaPlayerEntity, RestoreEntity):
         if self._api_connection is None:
             return
 
-        if new_state == STATE_ON:
-            _LOGGER.info("Reconnecting websocket due to power switch being on")
-            self._api_connection.establish_connection(self._on_minidsp_update)
-        else:
+        if new_state == STATE_OFF:
             _LOGGER.info("Disconnecting websocket due to power switch being off")
             self._api_connection.disconnect()
 
