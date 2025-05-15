@@ -130,6 +130,7 @@ class Volumio(MediaPlayerEntity, RestoreEntity):
     _attr_source_list = []
     _attr_sound_mode_list = []
     _attr_volume_step = 0.02
+    _api_connection = None
 
     def _update_power_state(self, state):
         if state == STATE_ON:
@@ -143,6 +144,9 @@ class Volumio(MediaPlayerEntity, RestoreEntity):
     def _on_power_state_change(self, event: Event[EventStateChangedData]) -> None:
         new_state = event.data["new_state"]
         self._update_power_state(new_state)
+
+        if self._api_connection is None:
+            return
 
         if new_state == STATE_ON:
             _LOGGER.info("Reconnecting websocket due to power switch being on")
