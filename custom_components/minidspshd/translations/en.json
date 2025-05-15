@@ -19,14 +19,12 @@
             "data": {
               "host": "Host",
               "port": "Port",
-              "device_id": "Device ID",
-              "websocket": "Websocket"
+              "device_id": "Device ID"
             },
             "data_description": {
               "host": "Hostname or IP address of your MiniDSP API",
               "port": "Port number (default 8080)",
-              "device_id": "Device ID of the connected MiniDSP (see minidsp-rs docs)",
-              "websocket": "Enable realtime connection (websocket)"
+              "device_id": "Device ID of the connected MiniDSP (see minidsp-rs docs)"
             }
           }
         }

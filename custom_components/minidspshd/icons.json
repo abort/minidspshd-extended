@@ -2,6 +2,7 @@
   "config": {
     "step": {
       "user": {
+        "entity_id": "mdi:toggle-switch-variant-off",
         "sections": {
           "minidsp_api": "mdi:api"
         }

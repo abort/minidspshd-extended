@@ -88,6 +88,6 @@ class MiniDSPApiConnection:
 
     def disconnect(self):
         self.ws.close()
-        self.thread.join()
-        self.thread = None
-
+        if self.thread is not None:
+            self.thread.join()
+            self.thread = None

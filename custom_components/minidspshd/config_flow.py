@@ -27,13 +27,12 @@ DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_HOST): str,
         vol.Required(CONF_PORT, default=3000): int,
-        vol.Optional(CONF_ENTITY_ID): EntitySelector(
-            EntitySelectorConfig(domain="switch")),
         vol.Optional(CONF_MINIDSP_API): section(vol.Schema({
             vol.Required(CONF_HOST): str,
             vol.Required(CONF_PORT, default=5380): int,
             vol.Required(CONF_MINIDSP_API_DEVICE_ID, default=0): int,
-        }))
+        })),
+        vol.Optional(CONF_ENTITY_ID): EntitySelector(EntitySelectorConfig(domain="switch"))
     }
 )
 
